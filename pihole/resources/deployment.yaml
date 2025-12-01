@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pihole
+  namespace: pihole
+  labels:
+    app: pihole
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pihole
+  template:
+    metadata:
+      labels:
+        app: pihole
+    spec:
+      initContainers:
+      - name: init-config
+        image: busybox:1.36
+        command: ['sh', '-c', 'mkdir -p /data/pihole && chown 1000:1000 /data/pihole']
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        securityContext:
+          runAsUser: 0
+      containers:
+      - name: pihole
+        image: pihole/pihole:latest
+        ports:
+        - containerPort: 53
+          name: dns-tcp
+          protocol: TCP
+        - containerPort: 53
+          name: dns-udp
+          protocol: UDP
+        - containerPort: 80
+          name: web
+          protocol: TCP
+        env:
+        - name: TZ
+          value: "UTC"
+        - name: FTLCONF_webserver_api_password
+          value: "admin"
+        - name: PIHOLE_DNS_
+          value: "1.1.1.1;8.8.8.8"
+        volumeMounts:
+        - name: data
+          mountPath: /etc/pihole
+          subPath: pihole/etc-pihole
+        - name: data
+          mountPath: /etc/dnsmasq.d
+          subPath: pihole/etc-dnsmasq.d
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 200m
+            memory: 256Mi
+        securityContext:
+          privileged: true
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: pihole-pvc
+      nodeSelector:
+        kubernetes.io/os: linux

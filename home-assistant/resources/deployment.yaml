@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: home-assistant
+  namespace: home-assistant
+  labels:
+    app: home-assistant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: home-assistant
+  template:
+    metadata:
+      labels:
+        app: home-assistant
+    spec:
+      initContainers:
+      - name: init-config
+        image: busybox:1.36
+        command: ['sh', '-c', 'mkdir -p /data/home-assistant && chown 1000:1000 /data/home-assistant']
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        securityContext:
+          runAsUser: 0
+      containers:
+      - name: home-assistant
+        image: ghcr.io/home-assistant/home-assistant:stable
+        ports:
+        - containerPort: 8123
+          name: http
+        env:
+        - name: TZ
+          value: "UTC"
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - |
+                # Wait for configuration.yaml to be created, then patch it
+                while [ ! -f /config/configuration.yaml ]; do
+                  sleep 1
+                done
+
+                # Add HTTP config if not already present
+                if ! grep -q "http:.*!include.*http_config.yaml" /config/configuration.yaml; then
+                  echo "" >> /config/configuration.yaml
+                  echo "# HTTP configuration for reverse proxy" >> /config/configuration.yaml
+                  echo "http: !include http_config.yaml" >> /config/configuration.yaml
+                fi
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8123
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        volumeMounts:
+        - name: data
+          mountPath: /config
+          subPath: home-assistant
+        - name: http-config
+          mountPath: /config/http_config.yaml
+          subPath: http_config.yaml
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+        securityContext:
+          privileged: true  # Needed for device access
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: home-assistant-pvc
+      - name: http-config
+        configMap:
+          name: home-assistant-http-config
+      nodeSelector:
+        kubernetes.io/os: linux

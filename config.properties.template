@@ -1,0 +1,10 @@
+# Configuration template for k3s-home
+# Copy this file to config.properties and customize the values
+
+# Base data path where all services will store data
+# Each service creates its own subdirectory (e.g., home-assistant/, traefik/)
+# Make sure this directory exists and has proper permissions
+DATA_PATH=/mnt/k3s-home
+
+# Timezone (see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+TIMEZONE=UTC

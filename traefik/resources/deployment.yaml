@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traefik
+  namespace: traefik
+  labels:
+    app: traefik
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traefik
+  template:
+    metadata:
+      labels:
+        app: traefik
+    spec:
+      serviceAccountName: traefik
+      containers:
+      - name: traefik
+        image: traefik:3.5.1
+        args:
+        - --configfile=/etc/traefik/traefik.yml
+        ports:
+        - name: home-assistant
+          containerPort: 8123
+        - name: admin
+          containerPort: 8080
+        volumeMounts:
+        - name: config
+          mountPath: /etc/traefik
+          readOnly: true
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+      volumes:
+      - name: config
+        configMap:
+          name: traefik-config
