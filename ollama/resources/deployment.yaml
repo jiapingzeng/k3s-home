@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: ollama
+  labels:
+    app: ollama
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      initContainers:
+      - name: init-config
+        image: busybox:1.36
+        command: ['sh', '-c', 'mkdir -p /data/ollama && chown 1000:1000 /data/ollama']
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        securityContext:
+          runAsUser: 0
+      containers:
+      - name: ollama
+        image: ollama/ollama:latest
+        ports:
+        - containerPort: 11434
+          name: api
+          protocol: TCP
+        env:
+        - name: OLLAMA_HOST
+          value: "0.0.0.0"
+        - name: OLLAMA_ORIGINS
+          value: "*"
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: all
+        - name: NVIDIA_DRIVER_CAPABILITIES
+          value: all
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - |
+                # Wait for Ollama server to be ready
+                echo "Waiting for Ollama server to be ready..."
+                until ollama ps >/dev/null 2>&1; do
+                  sleep 2
+                done
+
+                # Check if qwen3:30b model exists in persistent storage
+                if [ ! -f "/root/.ollama/models/manifests/registry.ollama.ai/library/qwen3/30b" ]; then
+                  echo "qwen3:30b model not found, downloading (19GB)..."
+                  ollama pull qwen3:30b
+                  echo "qwen3:30b model downloaded successfully!"
+                else
+                  echo "qwen3:30b model already exists, skipping download"
+                fi
+        volumeMounts:
+        - name: data
+          mountPath: /root/.ollama
+        resources:
+          limits:
+            cpu: 8000m
+            memory: 16Gi
+            nvidia.com/gpu: 1
+          requests:
+            cpu: 1000m
+            memory: 4Gi
+        securityContext:
+          runAsUser: 0
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 11434
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 11434
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: ollama-pvc
+      runtimeClassName: nvidia
+      nodeSelector:
+        kubernetes.io/os: linux

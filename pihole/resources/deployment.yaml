@@ -47,10 +47,10 @@ spec:
         volumeMounts:
         - name: data
           mountPath: /etc/pihole
-          subPath: pihole/etc-pihole
+          subPath: etc-pihole
         - name: data
           mountPath: /etc/dnsmasq.d
-          subPath: pihole/etc-dnsmasq.d
+          subPath: etc-dnsmasq.d
         resources:
           limits:
             cpu: 500m
