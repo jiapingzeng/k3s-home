@@ -22,6 +22,8 @@ Access services at:
 - **Home Assistant**: Home automation platform with web UI
 - **Pi-hole**: DNS ad-blocker and DHCP server
 - **Ollama**: Local LLM inference server for AI models
+- **Wyoming Whisper**: Speech-to-text service for voice assistants
+- **Wyoming Piper**: Text-to-speech service for voice assistants
 - **Traefik**: Reverse proxy exposing Home Assistant on port 8123
 
 ## Structure
@@ -61,14 +63,30 @@ Access services at:
 │       ├── persistentvolume.yaml # Data storage (2GB)
 │       ├── persistentvolumeclaim.yaml
 │       └── service.yaml       # LoadBalancer service (DNS + Web)
-└── ollama/                   # Ollama LLM inference server
+├── ollama/                   # Ollama LLM inference server
+│   ├── kustomization.yaml     # Service deployment
+│   └── resources/            # Kubernetes resources
+│       ├── namespace.yaml
+│       ├── deployment.yaml    # Main application with GPU support
+│       ├── persistentvolume.yaml # Data storage (50GB)
+│       ├── persistentvolumeclaim.yaml
+│       └── service.yaml       # LoadBalancer service (API)
+├── wyoming-whisper/          # Wyoming Whisper speech-to-text
+│   ├── kustomization.yaml     # Service deployment
+│   └── resources/            # Kubernetes resources
+│       ├── namespace.yaml
+│       ├── deployment.yaml    # STT service with model caching
+│       ├── persistentvolume.yaml # Model storage (5GB)
+│       ├── persistentvolumeclaim.yaml
+│       └── service.yaml       # Internal service (port 10300)
+└── wyoming-piper/            # Wyoming Piper text-to-speech
     ├── kustomization.yaml     # Service deployment
     └── resources/            # Kubernetes resources
         ├── namespace.yaml
-        ├── deployment.yaml    # Main application with GPU support
-        ├── persistentvolume.yaml # Data storage (50GB)
+        ├── deployment.yaml    # TTS service with voice models
+        ├── persistentvolume.yaml # Model storage (3GB)
         ├── persistentvolumeclaim.yaml
-        └── service.yaml       # LoadBalancer service (API)
+        └── service.yaml       # Internal service (port 10200)
 ```
 
 

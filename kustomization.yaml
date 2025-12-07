@@ -7,6 +7,8 @@ resources:
 - home-assistant
 - pihole
 - ollama
+- wyoming-whisper
+- wyoming-piper
 
 configMapGenerator:
 - name: app-config

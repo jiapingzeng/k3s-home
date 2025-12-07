@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: piper
+  namespace: wyoming-piper
+  labels:
+    app: wyoming-piper
+spec:
+  selector:
+    app: wyoming-piper
+  ports:
+  - name: wyoming
+    port: 10200
+    targetPort: 10200
+    protocol: TCP
+  type: ClusterIP
